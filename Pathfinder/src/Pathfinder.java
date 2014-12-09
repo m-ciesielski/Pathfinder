@@ -7,6 +7,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.lang.Math;
 import java.util.Vector;
 
@@ -23,50 +24,24 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 
-
-class GraphCreatorPanel extends JPanel{
+class GraphCreatorModel{
 	private Vector <Node> nodeContainer;	
-	static int DEFAULT_NODE_CIRCLE_HEIGHT=50;
-	static int DEFAULT_NODE_CIRCLE_WIDTH=50;
-	static int DEFAULT_NODE_CIRCLE_ARC_HEIGHT=5;
-	static int DEFAULT_NODE_CIRCLE_ARC_WIDTH=5;
 	private int focusIndex=0;
 	private int secondaryFocusIndex=0;
 	private boolean focus=false;
 	
-	public GraphCreatorPanel(){
-		setBorder(BorderFactory.createLineBorder(Color.black));
+	public GraphCreatorModel(){
 		nodeContainer= new Vector <Node> ();
 	}
 	
-	public Dimension getPreferredSize() {
-	    return new Dimension(250,200);
-	}
+	public int getNodeContainerSize(){return nodeContainer.size();}
 	
-	public void paintComponent(Graphics g) {
-	    super.paintComponent(g);
-	    for(int i=0; i<nodeContainer.size();++i){
-	    	if( focus==true)
-	    		if(i==focusIndex)
-	    		g.setColor(Color.YELLOW);
-	    		else if(secondaryFocusIndex!=-1 && i==secondaryFocusIndex)
-	    		g.setColor(Color.CYAN);
-	    	drawNode(g, nodeContainer.get(i));
-	    	g.setColor(Color.BLACK);
-	    	drawConnections(g, nodeContainer.get(i));
-	    }
-	}
+	public Node getNode(int index){return nodeContainer.get(index);}
 	
-	public int getNodeContainerSize(){
-		return nodeContainer.size();
-	}
+	public Vector <Node> getNodeContainer(){return nodeContainer;}
 	
-	public Node getNode(int index){
-		return nodeContainer.get(index);
-	}
-	void addNode(int x, int y){
-		nodeContainer.add(new Node (x,y));
-	}
+	void addNode(int x, int y){nodeContainer.add(new Node (x,y));}
+	
 	void deleteNode(int index){
 		for(int i=0; i<nodeContainer.size();++i){
 			for(int j=0; j<nodeContainer.get(i).getNeighboursCount();++j){
@@ -77,17 +52,6 @@ class GraphCreatorPanel extends JPanel{
 			nodeContainer.remove(index);	
 	}
 	
-	private void drawNode(Graphics g, Node arg){
-		//g.setColor(Color.BLACK);
-		g.drawRoundRect(arg.getX(), arg.getY(), DEFAULT_NODE_CIRCLE_HEIGHT, DEFAULT_NODE_CIRCLE_HEIGHT,
-				DEFAULT_NODE_CIRCLE_ARC_WIDTH, DEFAULT_NODE_CIRCLE_ARC_HEIGHT);
-	}
-	
-	private void drawConnections(Graphics g,Node arg){
-		for(int i=0; i<arg.getNeighboursCount();++i){
-			g.drawLine(arg.getX(), arg.getY(), arg.getNeighbour(i).getX(), arg.getNeighbour(i).getY());
-		}
-	}
 	public void focusNode(int index){
 		focusIndex=index;
 		focus=true;
@@ -126,42 +90,6 @@ class GraphCreatorPanel extends JPanel{
 }
 
 
-class GridPanel extends JPanel {
-	Vector <Path> pathVector;
-	int pathIndex;
-public GridPanel() {
-    setBorder(BorderFactory.createLineBorder(Color.black));
-    pathIndex=0;
-    pathVector=new Vector <Path> ();
-}
-
-public Dimension getPreferredSize() {
-    return new Dimension(250,200);
-}
-
-public void paintComponent(Graphics g) {
-    super.paintComponent(g);       
-    Grid.drawGrid(g,50, 0,0,Grid.getSize()-1,Grid.getSize()-1);
-    drawPath(g);
-}
- private void drawPath(Graphics g){
-	 if(pathVector.size()>0)
-	 {
-		 g.setColor(Color.BLACK);
-		 for(int j=0;j<pathVector.get(pathIndex).vector.size()-1;++j)
-		 {
-			 g.drawLine((50*pathVector.get(pathIndex).vector.get(j).getX()+25),(50*pathVector.get(pathIndex).vector.get(j).getY()+25),
-					 (50*pathVector.get(pathIndex).vector.get(j+1).getX()+25),(50*pathVector.get(pathIndex).vector.get(j+1).getY()+25));
-		 } 
-	 }
-		 
- }
-
- public void addPath (Path path){
-	 pathVector.add(path);
-	 //path.showPath();
- }
-}
 
 class Grid {
 	private static int size;
@@ -194,7 +122,7 @@ class Grid {
 	}
 }
 
-class Coords {
+abstract class Coords {
 	private int x;
 	private int y;
 	
@@ -220,13 +148,10 @@ class Coords {
 }
 
 class Node extends Coords{
-	//public int [] neighbour;
 	private Vector <Node> neighbourContainer;
 	Node()
 	{
-		//position=new Coords();
 		neighbourContainer=new Vector <Node>();
-		//neighbour=new int[4];
 	}
 	
 	Node(int x, int y){
@@ -264,7 +189,6 @@ class Graph {
 	{
 		this.size=size;
 		verticle=new Node[size];
-		//makeGridGraph(size);
 	}
 	
 	public void addVerticles(Node [] verticle){
@@ -326,7 +250,7 @@ class Graph {
 		}
 	}
 	*/
-	private void makeStep (Vector<Path> pathContainer, Path basePath, int pathLength, Node end)
+	private void pathfindingMechanics (Vector<Path> pathContainer, Path basePath, int pathLength, Node end)
 	{
 		//Sprawdzanie sciezki na przedostatnim kroku
 		if(basePath.vector.size()==pathLength-1){
@@ -338,7 +262,7 @@ class Graph {
 					correctPath=true;
 					basePath.vector.addElement(end);
 					if(index<pathContainer.size()-1){
-						makeStep(pathContainer, pathContainer.get(index+1), pathLength, end);
+						pathfindingMechanics(pathContainer, pathContainer.get(index+1), pathLength, end);
 					}
 					else
 						return;
@@ -347,7 +271,7 @@ class Graph {
 			if(correctPath==false){
 				if(index<pathContainer.size()-1){
 					pathContainer.remove(basePath);
-					makeStep(pathContainer, pathContainer.get(index), pathLength, end);
+					pathfindingMechanics(pathContainer, pathContainer.get(index), pathLength, end);
 				}
 				else{
 					pathContainer.remove(basePath);
@@ -371,7 +295,7 @@ class Graph {
 				int index=pathContainer.indexOf(basePath);
 				if(index<pathContainer.size()-1){
 					pathContainer.remove(basePath);
-					makeStep(pathContainer, pathContainer.get(index), pathLength, end);
+					pathfindingMechanics(pathContainer, pathContainer.get(index), pathLength, end);
 				}
 				else{
 					pathContainer.remove(basePath);
@@ -398,7 +322,7 @@ class Graph {
 					}
 					
 				}
-				makeStep(pathContainer, basePath, pathLength, end);
+				pathfindingMechanics(pathContainer, basePath, pathLength, end);
 			}
 			
 		}
@@ -411,13 +335,12 @@ class Graph {
 		Vector<Path> pathContainer=new Vector <Path> ();
 		pathContainer.add(new Path(start));
 		
-		makeStep(pathContainer, pathContainer.get(0), pathLength, end);
+		pathfindingMechanics(pathContainer, pathContainer.get(0), pathLength, end);
 		
 		System.out.println(pathContainer.size());
 		
 		for(int j=0;j<pathContainer.size();++j)
 		{
-			//if(pathContainer.get(j).vector.size()==pathLength)
 				mainPan.addPath(pathContainer.get(j));
 				pathContainer.get(j).showPath();
 			
@@ -511,144 +434,13 @@ public class Pathfinder {
 	    f.setVisible(true);
 	}
 	
-	private static void createAndShowGraphCreatorGUI(final GraphCreatorPanel mainPan){
+	private static void createAndShowGraphCreatorGUI(final GraphCreatorView mainPan){
 		System.out.println("Created GUI on EDT? "+
 	            SwingUtilities.isEventDispatchThread());
 	    JFrame f = new JFrame("Pathfinder");
 	    f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	    f.setSize(250,250);
 	    
-	    
-	    mainPan.addMouseListener(new MouseListener() {
-			
-	    	
-	    	boolean nodeSelected(Node arg, int x, int y){
-	    		if(arg.getX()<x && arg.getX()+GraphCreatorPanel.DEFAULT_NODE_CIRCLE_WIDTH>x
-						&&arg.getY()<y && arg.getY()+GraphCreatorPanel.DEFAULT_NODE_CIRCLE_WIDTH>y)
-	    			return true;
-	    		else 
-	    			return false;
-	    	}
-			@Override
-			public void mouseReleased(MouseEvent e) {
-				if(e.getButton()==3)
-				{
-					boolean nodeSelected=false;
-					for(int i=0;i<mainPan.getNodeContainerSize();++i){
-						Node testNode=mainPan.getNode(i);
-						System.out.println("size: "+mainPan.getNodeContainerSize());
-						if(nodeSelected(testNode, e.getX(),e.getY())==true)
-						{
-							if(mainPan.getSecondaryFocusIndex()==-1){
-								mainPan.deleteNode(i);
-								mainPan.repaint();
-								nodeSelected=true;
-								break;
-							}
-							else{
-								mainPan.addConnection(i, mainPan.getFocusIndex());
-								mainPan.repaint();
-								nodeSelected=true;
-								break;
-							}
-							
-						}
-					}
-					if(nodeSelected==false){
-						mainPan.addNode(e.getX(),e.getY());
-						System.out.println("size: "+mainPan.getNodeContainerSize());
-						mainPan.repaint();
-					}
-					
-				}
-				
-				
-			}
-			
-			@Override
-			public void mousePressed(MouseEvent e) {
-				//mainPan.addNode(e.getX(),e.getY());
-				//mainPan.repaint();
-				if(e.getButton()==1)
-				{
-					if(mainPan.getFocus()==false)
-					{
-						boolean nodeSelected=false;
-						for(int i=0;i<mainPan.getNodeContainerSize();++i){
-							Node testNode=mainPan.getNode(i);
-							System.out.println("size: "+mainPan.getNodeContainerSize());
-							if(nodeSelected(testNode, e.getX(),e.getY())==true)
-							{
-								mainPan.focusNode(i);
-								mainPan.repaint();
-								nodeSelected=true;
-								break;
-							}
-						}
-						if(nodeSelected==false){
-							mainPan.setFocus(false);
-							mainPan.secondaryFocusNode(-1);
-							mainPan.repaint();
-						}
-							
-					}
-					else{
-						boolean nodeSelected=false;
-						for(int i=0;i<mainPan.getNodeContainerSize()-1;++i){
-							Node testNode=mainPan.getNode(i);
-							
-							 if(nodeSelected(testNode, e.getX(),e.getY())==true)
-							{
-								 if(i==mainPan.getSecondaryFocusIndex()){
-										//mainPan.newConnection(mainPan.getNode(mainPan.getFocusIndex()), mainPan.getNode(mainPan.getSecondaryFocusIndex()));
-										mainPan.repaint();
-										
-									}
-								 else{
-									 mainPan.secondaryFocusNode(i);
-										mainPan.repaint();
-										nodeSelected=true;
-								 }
-								 break;
-								
-							}
-						}
-						if(nodeSelected==false){
-							mainPan.setFocus(false);
-							mainPan.secondaryFocusNode(-1);
-							mainPan.repaint();
-						}
-						
-					}
-				}
-				
-			}
-				
-			
-			@Override
-			public void mouseExited(MouseEvent e) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-			@Override
-			public void mouseEntered(MouseEvent e) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-			@Override
-			public void mouseClicked(MouseEvent e) {
-				/*
-				if(e.getButton()==3)
-				{
-					mainPan.addNode(e.getX(),e.getY());
-					mainPan.repaint();	
-					
-				}
-					*/
-			}
-		});
 	    f.add(mainPan);
 
 	    
@@ -667,7 +459,8 @@ public class Pathfinder {
 	public static void main(String[] args) {
 		//Grid space=new Grid(4);
 	// final GridPanel mainPan=new GridPanel();
-		final GraphCreatorPanel mainPan= new GraphCreatorPanel();
+		GraphCreatorModel model= new GraphCreatorModel();
+		final GraphCreatorView mainPan = new GraphCreatorView(model);
 
 		//Graph spaceGraph=new Graph(4);
 		//spaceGraph.showGraph();
