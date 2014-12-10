@@ -29,11 +29,23 @@ class GraphCreatorModel{
 	private int focusIndex=0;
 	private int secondaryFocusIndex=0;
 	private boolean focus=false;
-	
+	private Node pathStart;
+	private Node pathEnd;
 	public GraphCreatorModel(){
 		nodeContainer= new Vector <Node> ();
 	}
 	
+	
+	
+	public void setPathStart(Node pathStart){this.pathStart=pathStart;}
+	public void setPathEnd(Node pathStEnd){this.pathEnd=pathEnd;}
+	public Node getPathStart(){return pathStart;}
+	public Node getPathEnd(){return pathEnd;}
+	public void setFocus(boolean focus){this.focus=focus;}
+	public boolean getFocus(){return this.focus;}
+	public void secondaryFocusNode(int index){secondaryFocusIndex=index;}
+	public int getSecondaryFocusIndex(){return this.secondaryFocusIndex;}
+	public int getFocusIndex(){return this.focusIndex;}
 	public int getNodeContainerSize(){return nodeContainer.size();}
 	
 	public Node getNode(int index){return nodeContainer.get(index);}
@@ -75,52 +87,15 @@ class GraphCreatorModel{
 
 	public Graph createGraph(){
 		Graph graph=new Graph(nodeContainer.size());
-		graph.addVerticles((Node[]) nodeContainer.toArray());
+		graph.addVerticles(nodeContainer);
 		return graph;
 	}
-	
-	public void secondaryFocusNode(int index){secondaryFocusIndex=index;}
-	
-	public void setFocus(boolean focus){this.focus=focus;}
-	
-	
-	public boolean getFocus(){return this.focus;}
-	public int getSecondaryFocusIndex(){return this.secondaryFocusIndex;}
-	public int getFocusIndex(){return this.focusIndex;}
+
 }
 
 
 
-class Grid {
-	private static int size;
-	public Grid (int size)
-	{
-		Grid.size=size;
-	}
-	
-	public static int getSize()
-	{
-		return size;
-	}
-	
-	public static void drawGrid(Graphics g, int tileSize, int startX, int startY, int endX, int endY)
-	{
-		int xIterator=0;
-		int yIterator=0;
-		for(int i=0;i<size*size;++i)
-		{
-			g.drawRect(xIterator%size*tileSize,yIterator%size*tileSize, tileSize, tileSize);
-			if(i%size==0)
-				++xIterator;
-			else
-				++yIterator;
-		}
-		g.setColor(Color.GREEN);
-		g.fillRect(startX%size*tileSize,startY%size*tileSize, tileSize, tileSize);
-		g.setColor(Color.RED);
-		g.fillRect(endX%size*tileSize,endY%size*tileSize, tileSize, tileSize);
-	}
-}
+
 
 abstract class Coords {
 	private int x;
@@ -189,10 +164,11 @@ class Graph {
 	{
 		this.size=size;
 		verticle=new Node[size];
+		System.out.println(size);
 	}
 	
-	public void addVerticles(Node [] verticle){
-		this.verticle=verticle;
+	public void addVerticles(Vector <Node> nodeContainer){
+		this.verticle=nodeContainer.toArray(new Node [nodeContainer.size()]);
 	}
 	public int size(){return this.size;}
 	
@@ -229,10 +205,11 @@ class Graph {
 	
 	public void showGraph()
 	{
-		for(int i=0;i<size*size;++i)
+		for(int i=0;i<size;++i)
 		{
 			System.out.println("i= "+i+"("+verticle[i].getX()+" ,"+verticle[i].getY()+")");
-						
+			for(int j=0;j<verticle[i].getNeighboursCount();++j)
+				System.out.println("Sasiad: j= "+j+"("+verticle[i].getNeighbour(j).getX()+" ,"+verticle[i].getNeighbour(j).getY()+")");	
 		}
 	}
 	/*
@@ -330,7 +307,7 @@ class Graph {
 
 	
 
-	public void findPaths(int pathLength, Node start, Node end, GridPanel mainPan)
+	public void findPaths(int pathLength, Node start, Node end, Vector <Path> resultPathsContainer)
 	{
 		Vector<Path> pathContainer=new Vector <Path> ();
 		pathContainer.add(new Path(start));
@@ -341,7 +318,7 @@ class Graph {
 		
 		for(int j=0;j<pathContainer.size();++j)
 		{
-				mainPan.addPath(pathContainer.get(j));
+				resultPathsContainer.add(pathContainer.get(j));
 				pathContainer.get(j).showPath();
 			
 		}	

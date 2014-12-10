@@ -1,14 +1,24 @@
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.Vector;
 
 import javax.swing.BorderFactory;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
+import javax.swing.ListSelectionModel;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
-class GridPanel extends JPanel {
+class GridPanel extends JPanel{
 	Vector <Path> pathVector;
 	int pathIndex;
 public GridPanel() {
@@ -39,10 +49,7 @@ public void paintComponent(Graphics g) {
 		 
  }
 
- public void addPath (Path path){
-	 pathVector.add(path);
-	 //path.showPath();
- }
+ public void addPath (Path path){pathVector.add(path);}
 }
 
 class GraphCreatorView extends JPanel{
@@ -50,11 +57,60 @@ class GraphCreatorView extends JPanel{
 	static int DEFAULT_NODE_CIRCLE_WIDTH=50;
 	static int DEFAULT_NODE_CIRCLE_ARC_HEIGHT=5;
 	static int DEFAULT_NODE_CIRCLE_ARC_WIDTH=5;
+	private int indexOfPathToDraw=-1;
+	private JButton commitButton;
+	private JRadioButton startButton;
+	private JRadioButton endButton;
+	private DefaultListModel <String> pathListModel;
+	private JList<String> pathList;
+	private JScrollPane pathListScroll;
 	private GraphCreatorModel model;
-	public GraphCreatorView(GraphCreatorModel model){
+	 Vector <Path> resultPathsContainer;
+	
+	
+	public GraphCreatorView(final GraphCreatorModel model){
 		setBorder(BorderFactory.createLineBorder(Color.black));
+		
 		this.model=model;
 		this.addMouseListener(new GraphCreatorListener());
+		commitButton=new JButton();
+		this.add(commitButton);
+		commitButton.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				resultPathsContainer=new Vector<Path>();
+				Graph graph;
+				graph=model.createGraph();
+				graph.showGraph();
+					resultPathsContainer.clear();
+				for(int i=0;i<graph.size();++i)
+				graph.findPaths(i, graph.getVerticle(0), graph.getVerticle(graph.size()-1), resultPathsContainer);
+				
+				makeResultPathsList();
+			}
+		});
+		startButton=new JRadioButton();
+		this.add(startButton);
+		startButton.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				model.setPathStart(model.getNode(model.getFocusIndex()));
+				
+			}
+		});
+		endButton=new JRadioButton();
+		this.add(endButton);
+		endButton.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// TODO Auto-generated method stub
+				model.setPathEnd(model.getNode(model.getFocusIndex()));
+			}
+		});
+		
 	}
 	
 	public Dimension getPreferredSize() {return new Dimension(250,200);}
@@ -71,6 +127,8 @@ class GraphCreatorView extends JPanel{
 	    	g.setColor(Color.BLACK);
 	    	drawConnections(g, model.getNodeContainer().get(i));
 	    }
+	    if(indexOfPathToDraw!=-1)
+    		drawPath(g, resultPathsContainer.get(indexOfPathToDraw));
 	}
 	
 	private void drawNode(Graphics g, Node arg){
@@ -85,6 +143,47 @@ class GraphCreatorView extends JPanel{
 		}
 	}
 	
+	private void drawPath(Graphics g, Path path){
+		g.setColor(Color.RED);
+		for(int i=0;i<path.vector.size()-1;++i)
+			g.drawLine(path.vector.get(i).getX(),path.vector.get(i).getY(), path.vector.get(i+1).getX(), path.vector.get(i+1).getY());
+	}
+	
+	public void addPath(Path path){
+		resultPathsContainer.add(path);
+	}
+	
+	private void makeResultPathsList(){
+		pathListModel=new DefaultListModel<String>();
+		System.out.println(resultPathsContainer.size());
+		for(int i=0; i<resultPathsContainer.size();++i)
+		{
+			pathListModel.addElement("Sciezka nr: "+(i+1));
+		}
+		pathList= new JList<String>(pathListModel);
+		pathList.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
+		pathList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
+		pathList.setVisibleRowCount(-1);
+		
+
+		pathList.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+			
+			@Override
+			public void valueChanged(ListSelectionEvent e) {
+				ListSelectionModel lsm = (ListSelectionModel)e.getSource();
+				
+				indexOfPathToDraw=lsm.getMinSelectionIndex();
+				repaint();
+			}
+		});;
+		pathListScroll=new JScrollPane(pathList);
+		pathListScroll.setMaximumSize(new Dimension(100, 200));
+		pathListScroll.setMinimumSize (new Dimension (100,200));
+		pathListScroll.setPreferredSize(pathListScroll.getMaximumSize());
+	    this.add(pathListScroll);
+	    
+	    repaint();
+	}
 	class GraphCreatorListener implements MouseListener{
 		boolean nodeSelected(Node arg, int x, int y){
 			if(arg.getX()<x && arg.getX()+GraphCreatorView.DEFAULT_NODE_CIRCLE_WIDTH>x
@@ -100,7 +199,6 @@ class GraphCreatorView extends JPanel{
 				boolean nodeSelected=false;
 				for(int i=0;i<model.getNodeContainerSize();++i){
 					Node testNode=model.getNode(i);
-					System.out.println("size: "+model.getNodeContainerSize());
 					if(nodeSelected(testNode, e.getX(),e.getY())==true)
 					{
 						if(model.getSecondaryFocusIndex()==-1){
@@ -140,7 +238,6 @@ class GraphCreatorView extends JPanel{
 					boolean nodeSelected=false;
 					for(int i=0;i<model.getNodeContainerSize();++i){
 						Node testNode=model.getNode(i);
-						System.out.println("size: "+model.getNodeContainerSize());
 						if(nodeSelected(testNode, e.getX(),e.getY())==true)
 						{
 							model.focusNode(i);
@@ -211,5 +308,36 @@ class GraphCreatorView extends JPanel{
 		}
 		
 	}
+	
 }
 
+class Grid {
+	private static int size;
+	public Grid (int size)
+	{
+		Grid.size=size;
+	}
+	
+	public static int getSize()
+	{
+		return size;
+	}
+	
+	public static void drawGrid(Graphics g, int tileSize, int startX, int startY, int endX, int endY)
+	{
+		int xIterator=0;
+		int yIterator=0;
+		for(int i=0;i<size*size;++i)
+		{
+			g.drawRect(xIterator%size*tileSize,yIterator%size*tileSize, tileSize, tileSize);
+			if(i%size==0)
+				++xIterator;
+			else
+				++yIterator;
+		}
+		g.setColor(Color.GREEN);
+		g.fillRect(startX%size*tileSize,startY%size*tileSize, tileSize, tileSize);
+		g.setColor(Color.RED);
+		g.fillRect(endX%size*tileSize,endY%size*tileSize, tileSize, tileSize);
+	}
+}
